@@ -62,7 +62,14 @@ RAGDjango/
 - MySQL 5.7+ / 8.x
 - Redis 6+
 
-### 2. 安装依赖
+### 2. 获取代码
+
+```bash
+git clone https://github.com/JunyuXiao-xjy/RAGDjango.git
+cd RAGDjango
+```
+
+### 3. 安装依赖
 
 ```bash
 python -m venv .venv
@@ -75,7 +82,7 @@ pip install -r requirements.txt
 > `mysqlclient` 在 Windows 上若编译失败，可改用 `pip install pymysql` 并在
 > `RAGDjango/__init__.py` 中添加 `pymysql.install_as_MySQLdb()`。
 
-### 3. 配置（必做）
+### 4. 配置（必做）
 
 ```bash
 cp .env.example .env      # Windows: copy .env.example .env
@@ -94,7 +101,7 @@ cp .env.example .env      # Windows: copy .env.example .env
 
 `.env` 已在 `.gitignore` 中，**不会被提交**。也可以直接用系统环境变量注入（优先级更高）。
 
-### 4. 初始化数据库
+### 5. 初始化数据库
 
 ```sql
 CREATE DATABASE rag DEFAULT CHARACTER SET utf8mb4;
@@ -117,7 +124,7 @@ CREATE TABLE users (
 python manage.py migrate
 ```
 
-### 5. 构建向量库（首次必做）
+### 6. 构建向量库（首次必做）
 
 ```bash
 python -m RAGDjango.tools.ingest
@@ -126,7 +133,7 @@ python -m RAGDjango.tools.ingest
 产物写入 `RAGDjango/tools/vector_store/`：`embeddings.npy` + `chunks.json` + `meta.json`。
 这些文件体积较大且可重建，因此**不纳入版本管理**。
 
-### 6. 启动
+### 7. 启动
 
 ```bash
 python manage.py runserver
