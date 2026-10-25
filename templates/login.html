@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>邮箱登录</title>
+    {% load static %}
+    <script type="text/javascript" src="{% static 'js/vue.global.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/axios.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/index.full.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/index.css' %}">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background-image: url("{% static 'images/1.jpg' %}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            position: relative;
+        }
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 0;
+        }
+
+        .glass-panel {
+            position: relative;
+            z-index: 1;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        .title {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        /* ===== el-form-item 横排：label左 + 内容右 ===== */
+        .login-form .el-form-item {
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+        }
+        .login-form .el-form-item__label {
+            color: #fff !important;
+            font-weight: 500;
+            font-size: 15px;
+            min-width: 60px;
+            flex-shrink: 0;
+            padding-right: 12px;
+            line-height: 40px;
+        }
+        .login-form .el-form-item__content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* ===== 输入框样式覆盖 ===== */
+        .login-form .el-input__wrapper {
+            background: rgba(255, 255, 255, 0.15) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            border-radius: 10px !important;
+            box-shadow: none !important;
+        }
+        .login-form .el-input__wrapper:hover {
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5) !important;
+        }
+        .login-form .el-input__wrapper.is-focus,
+        .login-form .el-input__wrapper:focus-within {
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6) !important;
+        }
+        .login-form .el-input__inner {
+            color: #fff !important;
+            font-size: 15px !important;
+        }
+        .login-form .el-input__inner::placeholder {
+            color: rgba(255, 255, 255, 0.5) !important;
+        }
+        .login-form .el-input__prefix .el-input__icon,
+        .login-form .el-input__suffix .el-input__icon {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+
+        /* ===== 验证码行 ===== */
+        .code-input-wrapper {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+        .code-input-wrapper .el-input {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* ===== 发送验证码按钮 ===== */
+        .send-code-btn {
+            flex-shrink: 0;
+            height: 40px !important;
+            background: rgba(255, 255, 255, 0.2) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            color: #fff !important;
+            border-radius: 10px !important;
+            font-weight: 500 !important;
+            transition: all 0.3s ease;
+        }
+        .send-code-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.3) !important;
+            border-color: rgba(255, 255, 255, 0.5) !important;
+        }
+        .send-code-btn:disabled,
+        .send-code-btn.is-disabled {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+            color: rgba(255, 255, 255, 0.7) !important;
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+        .send-code-btn.counting {
+            background: rgba(255, 255, 255, 0.15) !important;
+            border-color: rgba(255, 255, 255, 0.4) !important;
+            color: rgba(255, 255, 255, 0.9) !important;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+            animation: pulse 1.5s infinite alternate;
+        }
+
+        /* ===== 登录按钮 ===== */
+        .login-btn {
+            width: 100%;
+            height: 48px !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: none !important;
+            color: #667eea !important;
+            font-weight: 600 !important;
+            font-size: 16px !important;
+            border-radius: 12px !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+        }
+        .login-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 1) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+        }
+        .login-btn:disabled,
+        .login-btn.is-disabled {
+            background: rgba(255, 255, 255, 0.3) !important;
+            color: rgba(255, 255, 255, 0.5) !important;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ===== 错误提示文字颜色 ===== */
+        .login-form .el-form-item__error {
+            color: #ff6b6b !important;
+        }
+
+        @keyframes pulse {
+            from { box-shadow: 0 0 8px rgba(255,255,255,0.3); opacity: 0.8; }
+            to   { box-shadow: 0 0 12px rgba(255,255,255,0.5); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .glass-panel { padding: 30px 20px; max-width: 100%; }
+            .title { font-size: 24px; }
+            .code-input-wrapper { flex-direction: column; }
+            .code-input-wrapper .send-code-btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+{% verbatim %}
+<div id="app">
+    <div class="login-container">
+        <div class="glass-panel">
+            <h3 class="title">🔐 邮箱登录</h3>
+
+            <el-form :model="account" :rules="rules" ref="formRef" class="login-form" label-position="left">
+                <el-form-item label="邮箱" prop="email">
+                    <el-input
+                        v-model="account.email"
+                        placeholder="请输入邮箱地址"
+                        clearable
+                        @input="validateEmail"
+                    ></el-input>
+                </el-form-item>
+
+                <el-form-item label="验证码" prop="code">
+                    <div class="code-input-wrapper">
+                        <el-input
+                            v-model="account.code"
+                            placeholder="请输入6位验证码"
+                            maxlength="6"
+                            clearable
+                        ></el-input>
+                        <el-button
+                            @click="sendCode"
+                            :disabled="isSending"
+                            class="send-code-btn"
+                            :class="{ counting: isSending }"
+                        >{{ isSending ? '(' + countdown + 's)' : '发送验证码' }}</el-button>
+                    </div>
+                </el-form-item>
+
+                <el-form-item>
+                    <el-button
+                        @click="CodeLogin"
+                        :loading="isLoading"
+                        :disabled="!canLogin"
+                        class="login-btn"
+                    >立即登录</el-button>
+                </el-form-item>
+            </el-form>
+        </div>
+    </div>
+</div>
+{% endverbatim %}
+
+<script>
+const { createApp, reactive, ref, computed, onUnmounted } = Vue;
+
+const app = createApp({
+    setup() {
+        const formRef = ref(null);
+        const isLoading = ref(false);
+
+        const account = reactive({
+            account: '',
+            code: ''
+        });
+
+        const isSending = ref(false);
+        const countdown = ref(60);
+        let timer = null;
+
+        const rules = {
+            email: [
+                { required: true, message: '请输入邮箱地址', trigger: 'blur' },
+                { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+            ],
+            code: [
+                { required: true, message: '请输入验证码', trigger: 'blur' },
+                { len: 6, message: '验证码必须为6位', trigger: 'blur' }
+            ]
+        };
+
+        const canLogin = computed(() => {
+            return account.email && account.code && account.code.length === 6;
+        });
+
+        const validateEmail = () => {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(account.email);
+        };
+
+        const sendCode = async () => {
+            if (!account.email) {
+                ElementPlus.ElMessage.warning('请输入邮箱地址');
+                return;
+            }
+            if (!validateEmail()) {
+                ElementPlus.ElMessage.warning('请输入正确的邮箱格式');
+                return;
+            }
+
+            isSending.value = true;
+            countdown.value = 60;
+
+            timer = window.setInterval(() => {
+                countdown.value--;
+                if (countdown.value <= 0) {
+                    if (timer !== null) {
+                        window.clearInterval(timer);
+                        timer = null;
+                    }
+                    isSending.value = false;
+                }
+            }, 1000);
+
+            try {
+                const response = await axios({
+                    url: '/send_code/',
+                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST',
+                    data: { email: account.email }
+                });
+                if (response.data.code === "200") {
+                    ElementPlus.ElMessage.success(response.data.msg);
+                } else {
+                    ElementPlus.ElMessage.warning(response.data.msg);
+                }
+            } catch (error) {
+                ElementPlus.ElMessage.error('服务器错误！请稍候重试！');
+            }
+        };
+
+        const CodeLogin = async () => {
+            if (!formRef.value) return;
+
+            await formRef.value.validate(async (valid) => {
+                if (valid) {
+                    isLoading.value = true;
+                    try {
+                        const response = await axios({
+                            url: '/login_code/',
+                            headers: { 'Content-Type': 'application/json' },
+                            method: 'POST',
+                            data: account
+                        });
+                        if (response.data.code === 200) {
+                            ElementPlus.ElMessage.success(response.data.msg);
+                            localStorage.setItem('account', account.email);
+                            setTimeout(() => {
+                                window.location.href = '/index/';
+                            }, 1000);
+                        } else {
+                            ElementPlus.ElMessage.warning(response.data.msg);
+                        }
+                    } catch (error) {
+                        ElementPlus.ElMessage.error('服务器错误！请稍候重试！');
+                        console.error('登录失败:', error);
+                    } finally {
+                        isLoading.value = false;
+                    }
+                }
+            });
+        };
+
+        onUnmounted(() => {
+            if (timer !== null) {
+                window.clearInterval(timer);
+                timer = null;
+            }
+        });
+
+        return {
+            account, rules, formRef, isLoading,
+            isSending, countdown, canLogin,
+            validateEmail, sendCode, CodeLogin
+        };
+    }
+});
+
+app.use(ElementPlus);
+app.mount('#app');
+</script>
+
+</body>
+</html>

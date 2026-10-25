@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI 智能助手</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        #app {
+            width: 100vw;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #f7f8fa;
+        }
+
+        .header {
+            background: #ffffff;
+            color: #333;
+            padding: 16px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #ebebeb;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            z-index: 10;
+        }
+        .header .title { display: flex; align-items: center; gap: 8px; }
+        .header .dot { width: 8px; height: 8px; background: #007bff; border-radius: 50%; display: inline-block; }
+
+        .header .user-info {
+            font-size: 13px;
+            color: #666;
+            margin-right: auto;
+            margin-left: 15px;
+            padding: 4px 10px;
+            background: #f0f4f8;
+            border-radius: 12px;
+            font-weight: normal;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f7f8fa;
+            display: flex;
+            flex-direction: column;
+            scroll-behavior: smooth;
+        }
+
+        .chat-box::-webkit-scrollbar { width: 6px; }
+        .chat-box::-webkit-scrollbar-track { background: transparent; }
+        .chat-box::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 10px; }
+
+        .message { margin-bottom: 24px; display: flex; width: 100%; }
+        .message.user { justify-content: flex-end; }
+
+        .bubble {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            line-height: 1.6;
+            word-wrap: break-word;
+            font-size: 15px;
+        }
+        .message.user .bubble {
+            background: #007bff;
+            color: #ffffff;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+        }
+        .message.ai .bubble {
+            background: #ffffff;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+            border: 1px solid #f0f0f0;
+        }
+
+        /* Markdown 样式 */
+        .message.ai .bubble p { margin: 0 0 10px 0; }
+        .message.ai .bubble p:last-child { margin-bottom: 0; }
+        .message.ai .bubble h1, .message.ai .bubble h2, .message.ai .bubble h3 { margin: 16px 0 8px 0; color: #1a1a1a; font-weight: 600; }
+        .message.ai .bubble h1 { font-size: 1.3em; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+        .message.ai .bubble h2 { font-size: 1.2em; }
+        .message.ai .bubble h3 { font-size: 1.1em; }
+        .message.ai .bubble ul, .message.ai .bubble ol { margin: 8px 0; padding-left: 20px; }
+        .message.ai .bubble li { margin-bottom: 6px; }
+        .message.ai .bubble strong { font-weight: 600; color: #111; }
+        .message.ai .bubble code { background: #f4f4f5; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #eb5757; font-size: 0.9em; }
+        .message.ai .bubble pre { background: #1e1e1e; padding: 14px; border-radius: 8px; overflow-x: auto; margin: 12px 0; }
+        .message.ai .bubble pre code { background: transparent; color: #d4d4d4; padding: 0; border-radius: 0; }
+        .message.ai .bubble blockquote { border-left: 4px solid #007bff; margin: 12px 0; padding-left: 12px; color: #666; background: #f9f9f9; padding: 8px 12px; border-radius: 0 4px 4px 0; }
+
+        .input-area {
+            display: flex;
+            padding: 16px 20px;
+            background: #ffffff;
+            border-top: 1px solid #ebebeb;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
+            align-items: center;
+            gap: 12px;
+        }
+
+        select {
+            padding: 10px 32px 10px 16px;
+            border-radius: 20px;
+            border: 1px solid #e0e0e0;
+            outline: none;
+            background: #f7f8fa;
+            font-size: 14px;
+            color: #333;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px top 50%;
+            background-size: 10px auto;
+        }
+        select:focus { border-color: #007bff; }
+
+        input {
+            flex: 1;
+            padding: 12px 18px;
+            border-radius: 24px;
+            border: 1px solid #e0e0e0;
+            outline: none;
+            font-size: 15px;
+            background: #f7f8fa;
+            transition: all 0.2s;
+        }
+        input:focus { background: #ffffff; border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.1); }
+
+        button {
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #a0cfff; cursor: not-allowed; }
+
+        .loading { font-size: 13px; color: #007bff; background: #e6f2ff; padding: 4px 12px; border-radius: 12px;}
+    </style>
+</head>
+
+<body>
+{% verbatim %}
+    <div id="app">
+        <div class="header">
+            <div class="title"><span class="dot"></span> AI 智能助手</div>
+            <!-- 增加 fallback，确保不会展示空白 -->
+            <div class="user-info">当前用户: {{ currentUser || '未登录' }}</div>
+            <div class="loading" v-if="isLoading">正在思考中...</div>
+        </div>
+
+        <div class="chat-box" ref="chatBox">
+            <!-- 排除掉内容为空的用户消息（避免出现截图里的空气泡） -->
+            <div v-for="(msg, index) in messages" :key="index" :class="['message', msg.role === 'user' ? 'user' : 'ai']">
+                <div class="bubble" v-if="msg.role === 'user' && msg.content && msg.content.trim() !== ''">{{ msg.content }}</div>
+                <div class="bubble" v-else-if="msg.role === 'ai'" v-html="renderMarkdown(msg.content || '...')"></div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <select v-model="mode">
+                <option value="chat">基础聊天</option>
+                <option value="rag">RAG 法律问答</option>
+                <option value="email">邮件发送助手</option>
+            </select>
+            <input
+                v-model="input"
+                @keydown.enter.prevent="handleEnter"
+                placeholder="请输入你的问题..."
+                :disabled="isLoading"
+            />
+            <button @click="sendMessage" :disabled="isLoading || !input.trim()">发送</button>
+        </div>
+    </div>
+
+    <script>
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+
+        const { createApp, ref, nextTick, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const messages = ref([{ role: 'ai', content: '你好！我是你的AI助手，请问有什么可以帮你？' }]);
+                const input = ref('');
+                const mode = ref('rag');
+                const isLoading = ref(false);
+                const chatBox = ref(null);
+                const currentUser = ref('');
+
+                // 页面加载时检查登录状态
+                onMounted(() => {
+                    const localAccount = localStorage.getItem('account');
+                    if (localAccount && localAccount !== 'undefined' && localAccount !== '') {
+                        currentUser.value = localAccount;
+                    } else {
+                        // 如果没登录或存入的是空，弹窗并强制跳回登录页
+                        alert('未检测到登录信息，请先登录！');
+                        window.location.href = '/';
+                    }
+                });
+
+                const scrollToBottom = async () => {
+                    await nextTick();
+                    if (chatBox.value) {
+                        chatBox.value.scrollTop = chatBox.value.scrollHeight;
+                    }
+                };
+
+                const renderMarkdown = (text) => {
+                    if (!text) return '';
+                    return marked.parse(text);
+                };
+
+                const getApiUrl = () => {
+                    // 使用相对路径，部署到任意域名/端口都无需改代码
+                    if (mode.value === 'rag') return '/api/rag/';
+                    if (mode.value === 'email') return '/api/email/';
+                    return '/api/chat/';
+                };
+
+                const handleEnter = (e) => {
+                    if (e.isComposing) return;
+                    sendMessage();
+                };
+
+                const sendMessage = async () => {
+                    const userText = input.value.trim();
+                    // 增加严格拦截，没字或者正在加载都不允许发
+                    if (!userText || isLoading.value) return;
+
+                    input.value = '';
+                    isLoading.value = true;
+
+                    messages.value.push({ role: 'user', content: userText });
+                    const aiMsgIndex = messages.value.length;
+                    messages.value.push({ role: 'ai', content: '' });
+                    scrollToBottom();
+
+                    try {
+                        const response = await fetch(getApiUrl(), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                question: userText,
+                                sessionId: currentUser.value // 现在这个值一定是正确的账户（邮箱/手机）
+                            })
+                        });
+
+                        if (!response.ok) throw new Error('网络请求失败');
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder('utf-8');
+                        let buffer = '';
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            buffer += decoder.decode(value, { stream: true });
+                            let parts = buffer.split('\n\n');
+                            buffer = parts.pop();
+
+                            for (let part of parts) {
+                                if (part.startsWith('data: ')) {
+                                    const dataStr = part.substring(6).trim();
+                                    if (dataStr === '[DONE]') continue;
+
+                                    try {
+                                        const data = JSON.parse(dataStr);
+                                        if (data.error) {
+                                            messages.value[aiMsgIndex].content += `\n\n[系统错误]: ${data.error}`;
+                                        } else if (data.text) {
+                                            let cleanText = data.text;
+                                            if (/^\(\(\(.*\)\)\)$/.test(cleanText)) {
+                                                console.warn("拦截到后端工具日志:", cleanText);
+                                                continue;
+                                            }
+                                            messages.value[aiMsgIndex].content += cleanText;
+                                            scrollToBottom();
+                                        }
+                                    } catch (e) {
+                                        console.error("解析数据失败", dataStr);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        messages.value[aiMsgIndex].content = `请求出错: ${error.message}`;
+                    } finally {
+                        isLoading.value = false;
+                        scrollToBottom();
+                    }
+                };
+
+                return {
+                    messages, input, mode, isLoading,
+                    sendMessage, chatBox, renderMarkdown,
+                    handleEnter, currentUser
+                };
+            }
+        }).mount('#app');
+    </script>
+    {% endverbatim %}
+</body>
+</html>

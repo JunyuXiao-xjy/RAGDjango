@@ -1,0 +1,54 @@
+# ============================ 密钥与本地配置 ============================
+# 绝对不要提交真实凭据：包含 API Key、SMTP 授权码、数据库口令
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ============================ Python ====================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ============================ 虚拟环境 ==================================
+.venv/
+venv/
+env/
+ENV/
+
+# ============================ Django ====================================
+db.sqlite3
+db.sqlite3-journal
+*.log
+local_settings.py
+staticfiles/
+media/
+
+# ==================== 生成物：向量库（可用 ingest.py 重建） ==============
+RAGDjango/tools/vector_store/*
+!RAGDjango/tools/vector_store/.gitkeep
+
+# ============================ IDE / 编辑器 ==============================
+.idea/
+.vscode/
+.claude/
+*.swp
+*.swo
+
+# ==================== 本地素材（含本地路径，不对外发布） =================
+chat_shots/
+# 根目录 docx/ 是 RAGDjango/doc/ 的重复副本，代码实际读取后者
+docx/
+
+# ============================ 操作系统 ==================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store

@@ -1,0 +1,3 @@
+# 该目录存放离线生成的向量库（embeddings.npy / chunks.json / meta.json）。
+# 这些文件体积较大且可由 `python -m RAGDjango.tools.ingest` 重建，
+# 因此被 .gitignore 忽略，仅保留本占位文件以维持目录结构。
