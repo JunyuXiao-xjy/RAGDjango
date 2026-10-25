@@ -19,6 +19,10 @@ except ImportError:  # 作为脚本直接运行时
 # ---------------------------------------------------------------------------
 # 隐私占位：邮箱账号、SMTP 授权码、数据库口令全部改为从环境变量读取。
 # 请复制 .env.example 为 .env 并填入你自己的值，不要把真实凭据写回源码。
+#
+# 数据库说明：这里的 MySQL 只存业务用户表 users（登录校验 / 按姓名查邮箱），
+# 建表脚本见仓库根目录 sql/schema.sql；Django 自身的表仍在 SQLite，
+# 由 `python manage.py migrate` 生成，不走这套连接。
 # ---------------------------------------------------------------------------
 MAIL_FROM = env_get("MAIL_FROM", "")            # 发件邮箱，例如 your_account@qq.com
 MAIL_PASSWORD = env_get("MAIL_PASSWORD", "")    # 邮箱 SMTP 授权码（不是登录密码）

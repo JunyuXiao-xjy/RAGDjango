@@ -50,9 +50,35 @@ RAGDjango/
 │   │   ├── tools.py           # send_email / sql_query 两个 Agent 工具
 │   │   └── vector_store/      # 生成的向量库（不入库，可重建）
 │   └── doc/                   # RAG 数据源（刑法 docx）
+├── sql/schema.sql             # MySQL 建库建表脚本（业务用户表 users）
 ├── templates/                 # index.html / login.html
 └── static/                    # Vue、ElementPlus、样式、背景图
 ```
+
+## 🗄️ 数据库与存储
+
+项目里有 **三处存储**，职责完全不同，不要混淆：
+
+| 存储 | 存什么 | 连接配置写在哪 | 怎么来 |
+| --- | --- | --- | --- |
+| **SQLite** `db.sqlite3` | Django 自身的 admin / session / auth 表 | `RAGDjango/settings.py` → `DATABASES` | `python manage.py migrate` 自动生成，**已 gitignore** |
+| **MySQL** `rag.users` | 业务用户表：登录校验、邮件助手按姓名反查邮箱 | `.env` 的 `DB_*` → `RAGDjango/tools/tools.py` 的 `DB_CONFIG` | 手动执行 `sql/schema.sql` |
+| **Redis** `login:code:{email}` | 登录验证码，TTL 300 秒 | `.env` 的 `REDIS_*` → `service/auth.py` | 启动 Redis 即可 |
+
+> ⚠️ 常见的误解：`users` 表**不走 Django ORM**。`settings.py` 的 `DATABASES` 保持默认 SQLite 就好，
+> 业务表由 `@tool("sql_query")` 通过 MySQLdb 直连查询，所以数据库账号密码配在 `.env` 的 `DB_*`。
+
+### `users` 表字段（MySQL）
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | INT PK | 自增主键 |
+| `username` | VARCHAR(64) | 用户姓名，**邮件助手按这个字段反查邮箱** |
+| `email` | VARCHAR(128) UNIQUE | 登录账号 + 默认收件地址，登录时必须命中 |
+| `phone` / `qq` | VARCHAR | 联系方式，当前代码未使用 |
+| `birthday` | DATE | 生日，当前代码未使用 |
+| `created_at` / `updated_at` | TIMESTAMP | 自动维护 |
+| `status` | TINYINT | 1-正常 / 0-禁用（**当前登录逻辑未强制校验**，需要时自行加判断） |
 
 ## 🚀 快速开始
 
@@ -103,26 +129,42 @@ cp .env.example .env      # Windows: copy .env.example .env
 
 ### 5. 初始化数据库
 
-```sql
-CREATE DATABASE rag DEFAULT CHARACTER SET utf8mb4;
+**① 业务库（MySQL）** —— 执行仓库自带的脚本（或直接在 Navicat / Workbench 里运行 `sql/schema.sql`）：
 
-USE rag;
-CREATE TABLE users (
-  id          INT AUTO_INCREMENT PRIMARY KEY,
-  username    VARCHAR(64)  NOT NULL,
-  email       VARCHAR(128) DEFAULT NULL,
-  phone       VARCHAR(32)  DEFAULT NULL,
-  qq          VARCHAR(32)  DEFAULT NULL,
-  birthday    DATE         DEFAULT NULL,
-  created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-  updated_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  status      TINYINT      DEFAULT 1
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```bash
+mysql -u root -p < sql/schema.sql
 ```
+
+**② 插入一个可登录的测试用户** —— 登录时会按 `email` 查这张表，表里没有对应邮箱就会返回「邮箱未注册！」：
+
+```bash
+mysql -u root -p rag -e "INSERT INTO users (username, email) VALUES ('测试用户', 'user@example.com');"
+```
+
+**③ Django 自身的表（SQLite）**：
 
 ```bash
 python manage.py migrate
 ```
+
+检查是否就绪：
+
+```bash
+mysql -u root -p -e "SELECT id, username, email FROM rag.users;"
+python manage.py check
+```
+
+### 5.1 数据库常见报错
+
+| 现象 | 原因与处理 |
+| --- | --- |
+| `(1045, "Access denied for user ...")` | `.env` 的 `DB_USER` / `DB_PASSWORD` 不对，或该账号没有 `rag` 库权限 |
+| `(1146, "Table 'rag.users' doesn't exist")` | 没执行 `sql/schema.sql` |
+| `(2003, "Can't connect to MySQL server on '127.0.0.1'")` | MySQL 服务未启动，或 `DB_PORT` 不是 3306 |
+| 登录返回「邮箱未注册！」 | `users` 表里没有这条 email，先按上面第 ② 步插入 |
+| 登录返回「验证码过期或错误！」 | Redis 未启动、验证码超过 5 分钟、或邮箱与发送时不一致 |
+| `ModuleNotFoundError: No module named 'MySQLdb'` | 安装 `mysqlclient`；Windows 编译失败就装 `pymysql` 并按第 3 节的说明做别名 |
+| `no such table: django_session` | 忘了执行 `python manage.py migrate` |
 
 ### 6. 构建向量库（首次必做）
 
